@@ -22,6 +22,8 @@ async def start(stream: bool) -> None:
     conv1 = Conversation()
     # 3. Get System prompt from console or use default -> constants.DEFAULT_SYSTEM_PROMPT and add to conversation
     #    messages.
+    system_prompt = input(f"System prompt (default: {DEFAULT_SYSTEM_PROMPT}): ") or DEFAULT_SYSTEM_PROMPT
+    conv1.add_message(Message(role=Role.SYSTEM, content=system_prompt))
     # 4. Use infinite cycle (while True) and get yser message from console
     while True:
         user_input = input("User: ")
@@ -31,8 +33,11 @@ async def start(stream: bool) -> None:
         # 6. Add user message to conversation history (role 'user')
         conv1.add_message(Message(role=Role.USER, content=user_input))
         # 7. If `stream` param is true -> call DialClient#stream_completion()
-        assistant_message = dial_cli.get_completion(messages=conv1.get_messages())
+        if stream:
+            assistant_message = await dial_cli.stream_completion(messages=conv1.get_messages())
+        else:
         #    else -> call DialClient#get_completion()
+            assistant_message = dial_cli.get_completion(messages=conv1.get_messages())
         # 8. Add generated message to history
         conv1.add_message(assistant_message)
         print("-" * 60)

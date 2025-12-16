@@ -13,6 +13,7 @@ class DialClient(BaseClient):
         # Documentation: https://pypi.org/project/aidial-client/ (here you can find how to create and use these clients)
         # 1. Create Dial client
         self.sync_client = Dial(api_key=self._api_key, base_url=DIAL_ENDPOINT)
+        self.async_client = AsyncDial(api_key=self._api_key, base_url=DIAL_ENDPOINT)
         # 2. Create AsyncDial client
 
     def get_completion(self, messages: list[Message]) -> Message:
@@ -37,12 +38,29 @@ class DialClient(BaseClient):
         return llm_answer
 
     async def stream_completion(self, messages: list[Message]) -> Message:
-        #TODO:
         # 1. Create chat completions with async client
         #    Hint: don't forget to add `stream=True` in call.
+        print("Streaming. Prompts: ", len(messages))
+        completion = await self.async_client.chat.completions.create(
+            deployment_name=self._deployment_name,
+            stream=True,
+            messages=[m.to_dict() for m in messages],
+            api_version="2024-12-01-preview",
+        )
         # 2. Create array with `contents` name (here we will collect all content chunks)
+        contents = []
         # 3. Make async loop from `chunks` (from 1st step)
-        # 4. Print content chunk and collect it contents array
+        async for chunk in completion:
+            # 4. Print content chunk and collect it contents array
+            # print(chunk)
+            delta_content = chunk.choices[0].delta.content
+            if delta_content:
+                contents.append(delta_content)
+                print(delta_content, end="")
+            if usage := chunk.usage:
+                print(" Tokens: input=", usage.prompt_tokens, ", output=", usage.completion_tokens)
+            # finish_reason = chunk.choices[0].finish_reason
         # 5. Print empty row `print()` (it will represent the end of streaming and in console we will print input from a new line)
+        print("-")
         # 6. Return Message with assistant role and message collected content
-        raise NotImplementedError
+        return Message(role=Role.AI, content="".join(contents))
